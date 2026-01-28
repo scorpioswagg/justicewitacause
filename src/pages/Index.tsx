@@ -61,12 +61,12 @@ export default function Index() {
                 </Button>
               </Link>
               <Link to="/resources">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+                <Button size="lg" className="w-full sm:w-auto bg-transparent border-2 border-primary-foreground/50 text-primary-foreground hover:bg-primary-foreground/10 hover:border-primary-foreground">
                   Explore Resources
                 </Button>
               </Link>
               <Link to="/community">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+                <Button size="lg" className="w-full sm:w-auto bg-transparent border-2 border-primary-foreground/50 text-primary-foreground hover:bg-primary-foreground/10 hover:border-primary-foreground">
                   Join the Community
                 </Button>
               </Link>
