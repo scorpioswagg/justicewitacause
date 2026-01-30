@@ -1,172 +1,69 @@
 
-# Justice With a Cause - Implementation Plan
+# Fix Button Styling & Submission RLS Error
 
-## Overview
-A mobile-first tenant advocacy platform for AHF/Healthy Housing residents featuring secure incident reporting, community forums, and resources — all with a professional, empowering design.
-
----
-
-## Phase 1: Foundation & Branding
-**Set up the core app structure and design system**
-
-- Configure Lovable Cloud for backend, database, and file storage
-- Create the color palette (deep navy, charcoal, white, gold/turquoise accents)
-- Set up Inter font and typography scale
-- Build reusable UI components (buttons, cards, forms) with law-firm-style polish
-- Create responsive mobile-first layout with header and footer
-- Add footer disclaimer text as specified
+## Summary
+This plan addresses two issues:
+1. Inconsistent button colors across the site
+2. RLS policy violation error when submitting reports
 
 ---
 
-## Phase 2: Public Pages
-**Build the informational pages**
+## Part 1: Standardize Button Colors
 
-### Home Page (/)
-- Hero section with headline "Your Voice Has Power. Your Home Has Rights."
-- Three action buttons: Submit a Concern, Explore Resources, Join the Community
-- Brief platform overview section
+### Changes to `src/pages/Index.tsx`
+Make all buttons use the accent color scheme for consistency:
 
-### About Page (/about)
-- Mission statement and platform purpose
-- Warm, empowering tone
+**Hero section buttons (lines 58-72):**
+- "Submit a Concern" - Keep as `bg-accent` (already correct)
+- "Explore Resources" - Change from transparent outline to `bg-accent`
+- "Join the Community" - Change from transparent outline to `bg-accent`
 
-### Legal Page (/legal)
-- Not-a-law-firm disclaimer
-- Truthfulness statement
-- Privacy policy
-- Community acceptable-use rules
+**CTA section buttons (lines 140-151):**
+- "Submit a Concern" - Keep as `bg-accent` (already correct)
+- "Learn More" - Change from `variant="outline"` to `bg-accent`
+
+All buttons will use: `bg-accent hover:bg-accent/90 text-accent-foreground`
 
 ---
 
-## Phase 3: Authentication System
-**User registration and admin role management**
+## Part 2: Fix RLS Submission Error
 
-- Email/password signup and login
-- Secure password requirements
-- Auto-admin assignment for Kyle.Merritt@cosmicblueprint.space
-- Protected routes for authenticated areas
-- Role-based access control (user vs admin)
+### Root Cause
+The current code does `.insert().select()` which requires SELECT permissions. Anonymous users can INSERT but cannot SELECT (only admins can view submissions).
 
----
+### Solution
+Modify the submission code in `src/pages/Submit.tsx` to:
+1. Perform the INSERT without chained `.select()`
+2. Generate the reference ID client-side (matching the database format: `JWC-YYYYMMDD-uuid8chars`)
 
-## Phase 4: Incident Reporting System
-**The core complaint/intake form with file uploads**
+This avoids needing SELECT permissions while still giving users their reference ID.
 
-### Database Setup
-- Create `submissions` table with all required fields
-- Create `submission_files` table for evidence attachments
-- Set up secure storage bucket (50MB max per file)
-- RLS policies: only admin can view submissions
+### Code Change (lines 134-160)
+Replace the insert logic to:
+```typescript
+// Generate reference ID client-side
+const submissionId = crypto.randomUUID();
+const referenceId = `JWC-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${submissionId.slice(0,8)}`;
 
-### Submission Form (/submit)
-- All fields as specified (name optional, property/unit required, etc.)
-- Issue type dropdown with all categories
-- Date picker for incident dates
-- Rich text area for detailed description
-- Multi-file upload supporting images, video, PDF, DOCX, audio
-- Required truthfulness checkbox
-- Optional follow-up checkbox
-- Success confirmation with reference ID
-
-### Email Automation
-- Set up Resend integration
-- Create edge function to send intake emails
-- Email includes: reference ID, property/unit, issue type, dates, description, contact info, attachment download links
-- Sends to Kyle.Merritt@cosmicblueprint.space
+// Insert without .select()
+const { error: submissionError } = await supabase
+  .from("submissions")
+  .insert({
+    id: submissionId,
+    reference_id: referenceId,
+    // ... other fields
+  });
+```
 
 ---
 
-## Phase 5: Resources Library
-**Downloadable templates and legal aid links**
-
-### Resources Page (/resources)
-- Header: "Know Your Rights. Protect Your Home."
-- Template sections with download buttons:
-  - Repair Request Letter (DOCX/PDF)
-  - Formal Grievance Letter (DOCX/PDF)
-  - Cease Harassment Notice (DOCX/PDF)
-  - Reasonable Accommodation Request (DOCX/PDF)
-- Legal Aid organizations section with placeholder links
-- Clean card-based layout
+## Files to Modify
+1. `src/pages/Index.tsx` - Update button styling
+2. `src/pages/Submit.tsx` - Fix submission logic to avoid SELECT requirement
 
 ---
 
-## Phase 6: Community Forum
-**Discussion platform with moderation**
-
-### Database Setup
-- `forum_categories` table (7 categories as specified)
-- `forum_posts` table with anonymous posting flag
-- `forum_comments` table
-- `forum_votes` table for upvotes
-- `forum_reports` table for content flagging
-- RLS policies for authenticated access
-
-### Forum Features (/community)
-- Category listing page
-- Post list with upvote counts and comment counts
-- Create post form with optional anonymous toggle
-- hCaptcha integration for anonymous posts
-- Comment threads on posts
-- Upvote functionality
-- Report content button
-- Pinned posts display
-
-### Rate Limiting
-- Limit posts per user per hour
-- Stricter limits for anonymous posts
-- Implemented via edge function
-
----
-
-## Phase 7: Admin Dashboard
-**Kyle's management interface**
-
-### Submissions Management
-- View all submissions in sortable/filterable table
-- View full submission details with file downloads
-- Search by property, date, issue type
-- Status tracking (new, reviewed, resolved)
-
-### Forum Moderation
-- View reported content queue
-- Hide/delete posts and comments
-- Pin/unpin posts
-- View user activity
-
-### Dashboard Home
-- Quick stats: new submissions, pending reports
-- Recent activity feed
-
----
-
-## Phase 8: Polish & Security
-**Final refinements**
-
-- Mobile responsiveness testing and fixes
-- Form validation with clear error messages
-- Loading states and error handling
-- Rate limiting on submission form
-- Input sanitization
-- Accessibility review (ARIA labels, keyboard navigation)
-- SEO meta tags
-
----
-
-## Tech Stack Summary
-- **Frontend**: React + TypeScript + Tailwind CSS
-- **Backend**: Lovable Cloud (Supabase)
-- **Database**: PostgreSQL with RLS
-- **File Storage**: Supabase Storage (50MB limit)
-- **Email**: Resend
-- **Anti-spam**: hCaptcha + rate limiting
-- **Auth**: Supabase Auth with role-based access
-
----
-
-## Secrets Required
-You'll need to provide:
-1. **RESEND_API_KEY** - For sending intake emails
-2. **HCAPTCHA_SECRET_KEY** - For spam protection on anonymous posts
-3. **HCAPTCHA_SITE_KEY** - Public key for captcha widget
-
+## Technical Notes
+- The database trigger for `generate_reference_id` will still run, but we provide the values client-side to avoid conflicts
+- The RLS policies remain secure: anyone can INSERT, only admins can SELECT
+- No database changes required
