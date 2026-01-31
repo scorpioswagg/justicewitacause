@@ -1,49 +1,55 @@
 
-# Fix Button Styling & Submission RLS Error
+
+# Fix Button Styling and Submission RLS Error
 
 ## Summary
-This plan addresses two issues:
-1. Inconsistent button colors across the site
-2. RLS policy violation error when submitting reports
+Two fixes are needed:
+1. Standardize all buttons to use the accent color scheme
+2. Fix the submission form to avoid requiring SELECT permissions
 
 ---
 
 ## Part 1: Standardize Button Colors
 
-### Changes to `src/pages/Index.tsx`
-Make all buttons use the accent color scheme for consistency:
+### File: `src/pages/Index.tsx`
 
-**Hero section buttons (lines 58-72):**
-- "Submit a Concern" - Keep as `bg-accent` (already correct)
-- "Explore Resources" - Change from transparent outline to `bg-accent`
-- "Join the Community" - Change from transparent outline to `bg-accent`
+**Hero Section (lines 63-72):**
+Change "Explore Resources" and "Join the Community" buttons from transparent to accent:
 
-**CTA section buttons (lines 140-151):**
-- "Submit a Concern" - Keep as `bg-accent` (already correct)
-- "Learn More" - Change from `variant="outline"` to `bg-accent`
+```typescript
+// Before
+className="w-full sm:w-auto bg-transparent border-2 border-primary-foreground/50 text-primary-foreground..."
 
-All buttons will use: `bg-accent hover:bg-accent/90 text-accent-foreground`
+// After
+className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground"
+```
+
+**CTA Section (line 147):**
+Change "Learn More" button from outline to accent:
+
+```typescript
+// Before
+variant="outline" className="... border-primary-foreground/30 text-primary-foreground..."
+
+// After
+className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground"
+```
 
 ---
 
 ## Part 2: Fix RLS Submission Error
 
-### Root Cause
-The current code does `.insert().select()` which requires SELECT permissions. Anonymous users can INSERT but cannot SELECT (only admins can view submissions).
+### File: `src/pages/Submit.tsx`
 
-### Solution
-Modify the submission code in `src/pages/Submit.tsx` to:
-1. Perform the INSERT without chained `.select()`
-2. Generate the reference ID client-side (matching the database format: `JWC-YYYYMMDD-uuid8chars`)
+**Root Cause:** The current code uses `.insert().select()` which requires SELECT permissions that only admins have.
 
-This avoids needing SELECT permissions while still giving users their reference ID.
+**Solution:** Generate the ID and reference_id client-side, then insert without `.select()`:
 
-### Code Change (lines 134-160)
-Replace the insert logic to:
 ```typescript
-// Generate reference ID client-side
+// Generate IDs client-side
 const submissionId = crypto.randomUUID();
-const referenceId = `JWC-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${submissionId.slice(0,8)}`;
+const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+const referenceId = `JWC-${today}-${submissionId.slice(0, 8)}`;
 
 // Insert without .select()
 const { error: submissionError } = await supabase
@@ -51,19 +57,28 @@ const { error: submissionError } = await supabase
   .insert({
     id: submissionId,
     reference_id: referenceId,
+    full_name: data.fullName || null,
+    property_name: data.propertyName,
     // ... other fields
-  });
+  } as any);
+
+if (submissionError) throw submissionError;
+
+// Use submissionId and referenceId directly for file uploads and success message
 ```
+
+This avoids the SELECT permission check while still providing users with their reference number.
 
 ---
 
 ## Files to Modify
-1. `src/pages/Index.tsx` - Update button styling
-2. `src/pages/Submit.tsx` - Fix submission logic to avoid SELECT requirement
+1. `src/pages/Index.tsx` - Update 3 buttons to use accent styling
+2. `src/pages/Submit.tsx` - Generate IDs client-side, remove `.select()`
 
 ---
 
 ## Technical Notes
-- The database trigger for `generate_reference_id` will still run, but we provide the values client-side to avoid conflicts
-- The RLS policies remain secure: anyone can INSERT, only admins can SELECT
+- The database trigger `generate_reference_id` will be bypassed since we provide the values
 - No database changes required
+- RLS policies remain unchanged and secure
+
