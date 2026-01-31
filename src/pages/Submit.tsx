@@ -147,10 +147,17 @@ export default function Submit() {
     setIsSubmitting(true);
 
     try {
-      // Insert submission (using type assertion since types may not be regenerated yet)
-      const { data: submission, error: submissionError } = await supabase
+      // Generate IDs client-side to avoid needing SELECT permissions
+      const submissionId = crypto.randomUUID();
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const referenceId = `JWC-${today}-${submissionId.slice(0, 8)}`;
+
+      // Insert submission without .select() to avoid RLS SELECT restriction
+      const { error: submissionError } = await supabase
         .from("submissions")
         .insert({
+          id: submissionId,
+          reference_id: referenceId,
           full_name: data.fullName || null,
           property_name: data.propertyName,
           unit_number: data.unitNumber,
@@ -160,16 +167,14 @@ export default function Submit() {
           description: data.description,
           location_notes: data.locationNotes || null,
           allow_followup: data.allowFollowup,
-        } as any)
-        .select("id, reference_id")
-        .single();
+        } as any);
 
       if (submissionError) throw submissionError;
 
       // Upload files if any
-      if (uploadedFiles.length > 0 && submission) {
+      if (uploadedFiles.length > 0) {
         for (const { file } of uploadedFiles) {
-          const filePath = `${submission.id}/${Date.now()}-${file.name}`;
+          const filePath = `${submissionId}/${Date.now()}-${file.name}`;
           
           const { error: uploadError } = await supabase.storage
             .from("evidence")
@@ -182,7 +187,7 @@ export default function Submit() {
 
           // Record file in database
           await supabase.from("submission_files").insert({
-            submission_id: submission.id,
+            submission_id: submissionId,
             file_name: file.name,
             file_path: filePath,
             file_size: file.size,
@@ -191,13 +196,13 @@ export default function Submit() {
         }
       }
 
-      setSubmissionSuccess(submission.reference_id);
+      setSubmissionSuccess(referenceId);
       form.reset();
       setUploadedFiles([]);
 
       toast({
         title: "Submission Received",
-        description: `Your reference ID is ${submission.reference_id}`,
+        description: `Your reference ID is ${referenceId}`,
       });
 
     } catch (error: any) {
