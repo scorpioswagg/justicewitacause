@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -15,6 +16,8 @@ const navLinks = [
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, profile, signOut } = useAuth();
+  const isAdmin = profile?.role === "admin";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -44,8 +47,23 @@ export function Header() {
           <Link to="/auth">
             <Button variant="outline" size="sm">
               Sign In
+          {isAdmin && (
+            <Link to="/admin" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">
+              Admin
+            </Link>
+          )}
+          {user ? (
+            <Button variant="outline" size="sm" onClick={() => signOut()}>
+              Sign Out
             </Button>
           </Link>
+          ) : (
+            <Link to="/auth">
+              <Button variant="outline" size="sm">
+                Sign In
+              </Button>
+            </Link>
+          )}
         </nav>
 
         {/* Mobile Menu Button */}
@@ -82,8 +100,33 @@ export function Header() {
             <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
               <Button variant="outline" size="sm" className="w-full mt-2">
                 Sign In
+            {isAdmin && (
+              <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
+                <Button variant="ghost" size="sm" className="w-full justify-start">
+                  Admin
+                </Button>
+              </Link>
+            )}
+            {user ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-2"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  void signOut();
+                }}
+              >
+                Sign Out
               </Button>
             </Link>
+            ) : (
+              <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
+                <Button variant="outline" size="sm" className="w-full mt-2">
+                  Sign In
+                </Button>
+              </Link>
+            )}
           </div>
         </nav>
       )}
