@@ -14,6 +14,144 @@ export type Database = {
   }
   public: {
     Tables: {
+      forum_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_announcement: boolean
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_announcement?: boolean
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_announcement?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
+      forum_comments: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string
+          id: string
+          is_hidden: boolean
+          topic_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_hidden?: boolean
+          topic_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_hidden?: boolean
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_comments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "forum_comments_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "forum_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forum_topics: {
+        Row: {
+          body: string
+          category_id: string
+          created_at: string
+          created_by: string
+          id: string
+          is_hidden: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          category_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_hidden?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          category_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_hidden?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_topics_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "forum_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forum_topics_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          role: Database["public"]["Enums"]["forum_role"]
+          status: Database["public"]["Enums"]["forum_profile_status"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          role?: Database["public"]["Enums"]["forum_role"]
+          status?: Database["public"]["Enums"]["forum_profile_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          role?: Database["public"]["Enums"]["forum_role"]
+          status?: Database["public"]["Enums"]["forum_profile_status"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       submission_files: {
         Row: {
           created_at: string
@@ -39,81 +177,7 @@ export type Database = {
           file_path?: string
           file_size?: number
           file_type?: string
-          id?: string
-          submission_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "submission_files_submission_id_fkey"
-            columns: ["submission_id"]
-            isOneToOne: false
-            referencedRelation: "submissions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      submissions: {
-        Row: {
-          allow_followup: boolean | null
-          contact_info: string | null
-          created_at: string
-          description: string
-          full_name: string | null
-          id: string
-          incident_dates: string
-          issue_type: Database["public"]["Enums"]["issue_type"]
-          location_notes: string | null
-          property_name: string
-          reference_id: string
-          status: Database["public"]["Enums"]["submission_status"] | null
-          unit_number: string
-          updated_at: string
-        }
-        Insert: {
-          allow_followup?: boolean | null
-          contact_info?: string | null
-          created_at?: string
-          description: string
-          full_name?: string | null
-          id?: string
-          incident_dates: string
-          issue_type: Database["public"]["Enums"]["issue_type"]
-          location_notes?: string | null
-          property_name: string
-          reference_id: string
-          status?: Database["public"]["Enums"]["submission_status"] | null
-          unit_number: string
-          updated_at?: string
-        }
-        Update: {
-          allow_followup?: boolean | null
-          contact_info?: string | null
-          created_at?: string
-          description?: string
-          full_name?: string | null
-          id?: string
-          incident_dates?: string
-          issue_type?: Database["public"]["Enums"]["issue_type"]
-          location_notes?: string | null
-          property_name?: string
-          reference_id?: string
-          status?: Database["public"]["Enums"]["submission_status"] | null
-          unit_number?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
+@@ -117,50 +255,52 @@ export type Database = {
           user_id: string
         }
         Update: {
@@ -139,6 +203,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      forum_profile_status: "pending" | "approved" | "rejected"
+      forum_role: "admin" | "user"
       issue_type:
         | "Harassment"
         | "Unsafe Conditions"
@@ -164,128 +230,3 @@ export type Tables<
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
-    }
-    ? R
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
-
-export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
-
-export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
-
-export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
-
-export const Constants = {
-  public: {
-    Enums: {
-      app_role: ["admin", "user"],
-      issue_type: [
-        "Harassment",
-        "Unsafe Conditions",
-        "Maintenance Neglect",
-        "Discrimination",
-        "Privacy Violations",
-        "Retaliation",
-        "Other",
-      ],
-      submission_status: ["new", "reviewed", "resolved"],
-    },
-  },
-} as const
