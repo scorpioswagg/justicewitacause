@@ -1,49 +1,179 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldCheck, UserCheck } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 export default function Auth() {
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user, profile, signOut } = useAuth();
+  const [activeTab, setActiveTab] = useState("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleLogin = async () => {
+    setSubmitting(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    setSubmitting(false);
+
+    if (error) {
+      toast({
+        title: "Login failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Welcome back!",
+      description: "You're signed in.",
+    });
+    navigate("/community");
+  };
+
+  const handleSignUp = async () => {
+    setSubmitting(true);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    setSubmitting(false);
+
+    if (error) {
+      toast({
+        title: "Sign up failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (data.user) {
+      await supabase.from("profiles").upsert({
+        user_id: data.user.id,
+        status: "pending",
+        role: "user",
+        display_name: displayName || null,
+      });
+    }
+
+    toast({
+      title: "Account created",
+      description: "Check your email to confirm your account. You will be pending approval after signup.",
+    });
+    setActiveTab("login");
+  };
+
   return (
     <Layout>
-      <section className="gradient-navy text-primary-foreground py-16 md:py-24">
-        <div className="container">
-          <div className="max-w-2xl mx-auto text-center space-y-4">
-            <div className="flex items-center justify-center gap-2 text-accent">
-              <ShieldCheck className="h-6 w-6" />
-              <span className="text-sm font-semibold uppercase tracking-wide">Sign In</span>
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold">Welcome Back</h1>
-            <p className="text-lg text-primary-foreground/80">
-              Access your reports, saved resources, and community updates in one secure place.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-16 md:py-24 bg-background">
-        <div className="container">
-          <div className="max-w-xl mx-auto">
-            <Card className="border-border shadow-elegant">
-              <CardHeader className="space-y-2 text-center">
-                <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto">
-                  <UserCheck className="h-6 w-6 text-accent" />
+      <section className="py-16 md:py-24">
+        <div className="container max-w-2xl">
+          <Card className="shadow-elegant border-border">
+            <CardHeader>
+              <CardTitle className="text-2xl">Tenant Forum Access</CardTitle>
+              <CardDescription>
+                Sign in or create an account. New users are pending approval before they can view or post in the forum.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {user ? (
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-border bg-muted/40 p-4">
+                    <p className="text-sm font-medium text-foreground">Signed in as {user.email}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Status: {profile?.status ?? "pending"} · Role: {profile?.role ?? "user"}
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Link to="/community" className="w-full">
+                      <Button className="w-full">Go to Community Forum</Button>
+                    </Link>
+                    <Button variant="outline" className="w-full" onClick={() => signOut()}>
+                      Sign Out
+                    </Button>
+                  </div>
                 </div>
-                <CardTitle className="text-2xl">Sign in to your account</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-lg border border-dashed border-border bg-muted/40 p-4 text-sm text-muted-foreground">
-                  Authentication is coming soon. In the meantime, you can submit concerns and browse resources without an account.
-                </div>
-                <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" size="lg">
-                  Continue with Email
-                </Button>
-                <Button className="w-full" variant="outline" size="lg">
-                  Create a New Account
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+              ) : (
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="login">Login</TabsTrigger>
+                    <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="login" className="space-y-4 pt-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="login-email">Email</Label>
+                      <Input
+                        id="login-email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="login-password">Password</Label>
+                      <Input
+                        id="login-password"
+                        type="password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                      />
+                    </div>
+                    <Button className="w-full" onClick={handleLogin} disabled={submitting}>
+                      Sign In
+                    </Button>
+                  </TabsContent>
+                  <TabsContent value="signup" className="space-y-4 pt-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-name">Display Name (optional)</Label>
+                      <Input
+                        id="signup-name"
+                        type="text"
+                        placeholder="Jordan"
+                        value={displayName}
+                        onChange={(event) => setDisplayName(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-email">Email</Label>
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password">Password</Label>
+                      <Input
+                        id="signup-password"
+                        type="password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                      />
+                    </div>
+                    <Button className="w-full" onClick={handleSignUp} disabled={submitting}>
+                      Create Account
+                    </Button>
+                  </TabsContent>
+                </Tabs>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </section>
     </Layout>
