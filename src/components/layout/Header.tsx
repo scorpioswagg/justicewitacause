@@ -44,9 +44,6 @@ export function Header() {
               {link.label}
             </Link>
           ))}
-          <Link to="/auth">
-            <Button variant="outline" size="sm">
-              Sign In
           {isAdmin && (
             <Link to="/admin" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">
               Admin
@@ -56,7 +53,6 @@ export function Header() {
             <Button variant="outline" size="sm" onClick={() => signOut()}>
               Sign Out
             </Button>
-          </Link>
           ) : (
             <Link to="/auth">
               <Button variant="outline" size="sm">
@@ -97,9 +93,6 @@ export function Header() {
                 {link.label}
               </Link>
             ))}
-            <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
-              <Button variant="outline" size="sm" className="w-full mt-2">
-                Sign In
             {isAdmin && (
               <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
                 <Button variant="ghost" size="sm" className="w-full justify-start">
@@ -119,7 +112,6 @@ export function Header() {
               >
                 Sign Out
               </Button>
-            </Link>
             ) : (
               <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
                 <Button variant="outline" size="sm" className="w-full mt-2">
